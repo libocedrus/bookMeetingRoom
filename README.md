@@ -131,7 +131,7 @@ JIEJIARI_API_KEY=
 9. 部署完成后，访问接口确认结果：
 
 ```text
-https://book-meeting-room.zh-cn.edgeone.cool/api/meeting-room/should-remind?date=2026-05-11
+https://book-meeting-room-qhd7g7gj.edgeone.cool/api/meeting-room/should-remind?date=2026-05-11
 ```
 
 直接打开域名根路径 `/` 会显示项目说明页；快捷指令和接口测试都应访问 `/api/meeting-room/should-remind`。
@@ -203,6 +203,25 @@ date=YYYY-MM-DD
 
 ## iPhone 快捷指令
 
+### 前置检查
+
+在配置快捷指令前，先用 Safari 打开：
+
+```text
+https://book-meeting-room-qhd7g7gj.edgeone.cool/api/meeting-room/should-remind
+```
+
+正常情况下应该看到 JSON，类似：
+
+```json
+{
+  "success": true,
+  "shouldRemind": false
+}
+```
+
+如果看到 EdgeOne 的 `401 UNAUTHORIZED`、`eo_time missing` 或 HTML 错误页，说明当前域名还处于预览/受限访问状态。此时快捷指令拿到的不是 JSON，而是网页文本，后续“获取字典值”会失败。需要先在 EdgeOne Pages 中关闭访问限制，或使用控制台生成的完整预览链接。
+
 ### 创建闹钟
 
 在“时钟”App 中创建一个每天固定时间的闹钟，命名为：
@@ -225,25 +244,165 @@ date=YYYY-MM-DD
 检查会议室预定提醒
 ```
 
-动作配置：
+#### 第 1 步：获取接口内容
 
 ```text
-1. 获取 URL 内容
-   URL: https://book-meeting-room.zh-cn.edgeone.cool/api/meeting-room/should-remind
-   方法: GET
+搜索操作：获取 URL 内容
+URL：https://book-meeting-room-qhd7g7gj.edgeone.cool/api/meeting-room/should-remind
+方法：GET
+```
 
-2. 获取字典值 shouldRemind
+如果动作右侧有展开按钮，可以点开确认：
 
-3. 如果 shouldRemind 是 true：
-     打开闹钟“预定会议室”
-   否则：
-     关闭闹钟“预定会议室”
+```text
+方法：GET
+请求正文：无
+```
 
-4. 获取字典值 success
+#### 第 2 步：读取 shouldRemind
 
-5. 如果 success 是 false：
-     获取字典值 userNotice
-     显示通知 userNotice
+继续添加操作：
+
+```text
+搜索操作：获取字典值
+动作显示：在 URL 的内容 中获取 键 的 值
+```
+
+把这个动作里的 `键` 点开，填入：
+
+```text
+shouldRemind
+```
+
+填好后，这个动作应类似：
+
+```text
+在 URL 的内容 中获取 shouldRemind 的值
+```
+
+#### 第 3 步：根据 shouldRemind 开关闹钟
+
+为了避免快捷指令把 `shouldRemind` 识别成“文件大小”等通用内容属性，先把它转成文本。
+
+继续添加操作：
+
+```text
+搜索操作：文本
+文本内容：上一步获取到的 shouldRemind
+```
+
+添加时，点输入框上方的变量，选择第 2 步输出的 `shouldRemind` / `字典值`。
+
+继续添加操作：
+
+```text
+搜索操作：如果
+```
+
+设置条件：
+
+```text
+如果 文本 是 true
+```
+
+在“如果”分支中添加闹钟动作：
+
+```text
+搜索操作：闹钟
+选择：打开闹钟 / 切换闹钟 / 设置闹钟
+闹钟：预定会议室
+状态：打开
+```
+
+在“否则”分支中添加闹钟动作：
+
+```text
+搜索操作：闹钟
+选择：关闭闹钟 / 切换闹钟 / 设置闹钟
+闹钟：预定会议室
+状态：关闭
+```
+
+不同 iOS 版本里动作名称可能略有差异。核心目标是：在“如果 shouldRemind 是 true”时打开名为 `预定会议室` 的已有闹钟，在“否则”时关闭这个闹钟。
+
+#### 第 4 步：读取 success
+
+在上面的“如果”动作后面继续添加操作：
+
+```text
+搜索操作：获取字典值
+动作显示：在 URL 的内容 中获取 键 的 值
+```
+
+把 `键` 改成：
+
+```text
+success
+```
+
+填好后，这个动作应类似：
+
+```text
+在 URL 的内容 中获取 success 的值
+```
+
+#### 第 5 步：接口失败时显示通知
+
+同样建议先把 `success` 转成文本。
+
+继续添加操作：
+
+```text
+搜索操作：文本
+文本内容：上一步获取到的 success
+```
+
+继续添加操作：
+
+```text
+搜索操作：如果
+```
+
+设置条件：
+
+```text
+如果 文本 是 false
+```
+
+在这个“如果”分支中继续添加：
+
+```text
+搜索操作：获取字典值
+动作显示：在 URL 的内容 中获取 键 的 值
+键：userNotice
+```
+
+然后添加通知动作：
+
+```text
+搜索操作：显示通知
+通知内容：上一步获取到的 userNotice
+```
+
+如果 `success` 是 true，这个分支不用做任何事。
+
+最终快捷指令结构应是：
+
+```text
+获取 URL 内容
+在 URL 的内容 中获取 shouldRemind 的值
+文本 shouldRemind
+如果 文本 是 true
+  打开闹钟“预定会议室”
+否则
+  关闭闹钟“预定会议室”
+结束如果
+在 URL 的内容 中获取 success 的值
+文本 success
+如果 文本 是 false
+  在 URL 的内容 中获取 userNotice 的值
+  显示通知 userNotice
+结束如果
 ```
 
 ### 创建自动化
@@ -294,7 +453,7 @@ http://localhost:8787/api/meeting-room/should-remind?date=2026-05-11
 部署后也可以访问：
 
 ```text
-https://book-meeting-room.zh-cn.edgeone.cool/calendar-test.html
+https://book-meeting-room-qhd7g7gj.edgeone.cool/calendar-test.html
 ```
 
 日历测试页默认使用相对接口：
