@@ -130,6 +130,8 @@ JIEJIARI_API_KEY=
 https://你的域名/api/meeting-room/should-remind?date=2026-05-11
 ```
 
+直接打开预览域名根路径 `/` 只会显示项目说明页；快捷指令和接口测试都应访问 `/api/meeting-room/should-remind`。
+
 EdgeOne Pages 会根据目录结构生成接口路由：
 
 ```text
