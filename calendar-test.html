@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>会议室提醒日历测试</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --panel: #ffffff;
+        --line: #d8dee9;
+        --line-strong: #b8c2d3;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --accent: #2563eb;
+        --danger: #dc2626;
+        --ok: #16803c;
+        --warn: #b45309;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .page {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 22px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        line-height: 1.2;
+      }
+
+      .subtitle {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .endpoint {
+        min-width: 420px;
+      }
+
+      .endpoint label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .endpoint input {
+        width: 100%;
+        height: 38px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--text);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(620px, 0.95fr) minmax(720px, 1.05fr);
+        gap: 20px;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+      }
+
+      .calendar {
+        padding: 18px;
+      }
+
+      .calendar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .month-title {
+        min-width: 180px;
+        text-align: center;
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      .nav-group,
+      .select-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .icon-button,
+      .secondary-button {
+        height: 36px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--text);
+      }
+
+      .icon-button {
+        width: 38px;
+        font-size: 20px;
+        line-height: 1;
+      }
+
+      .secondary-button {
+        padding: 0 12px;
+      }
+
+      .select-group select {
+        height: 36px;
+        padding: 0 30px 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+      }
+
+      .weekdays,
+      .days {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+      }
+
+      .weekdays {
+        border-top: 1px solid var(--line);
+        border-left: 1px solid var(--line);
+        background: #eef2f7;
+      }
+
+      .weekday {
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-right: 1px solid var(--line);
+        font-size: 13px;
+        font-weight: 700;
+        color: #4b5563;
+      }
+
+      .days {
+        border-left: 1px solid var(--line);
+      }
+
+      .day {
+        position: relative;
+        min-height: 104px;
+        padding: 10px;
+        border-right: 1px solid var(--line);
+        border-top: 1px solid var(--line);
+        background: #fff;
+        text-align: left;
+      }
+
+      .day:nth-last-child(-n + 7) {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .day:hover {
+        background: #f8fbff;
+      }
+
+      .day.outside {
+        background: #f8fafc;
+        color: #9ca3af;
+      }
+
+      .day.selected {
+        outline: 3px solid var(--danger);
+        outline-offset: -3px;
+        z-index: 1;
+      }
+
+      .day-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        font-weight: 700;
+      }
+
+      .day.today .day-number {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
+      .day-date {
+        display: block;
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .status-pill {
+        position: absolute;
+        right: 8px;
+        bottom: 8px;
+        max-width: calc(100% - 16px);
+        padding: 4px 7px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .side {
+        display: grid;
+        grid-template-columns: minmax(340px, 0.85fr) minmax(360px, 1.15fr);
+        align-items: start;
+        gap: 20px;
+      }
+
+      .result {
+        padding: 18px;
+      }
+
+      .section-title {
+        margin: 0 0 14px;
+        font-size: 17px;
+        font-weight: 700;
+      }
+
+      .result-banner {
+        min-height: 64px;
+        margin-bottom: 16px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #f8fafc;
+      }
+
+      .result-banner.ok {
+        border-color: #b7e4c7;
+        background: #f0fdf4;
+      }
+
+      .result-banner.warn {
+        border-color: #fed7aa;
+        background: #fff7ed;
+      }
+
+      .result-banner.error {
+        border-color: #fecaca;
+        background: #fef2f2;
+      }
+
+      .banner-title {
+        margin: 0 0 6px;
+        font-weight: 700;
+      }
+
+      .banner-text {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .fields {
+        display: grid;
+        gap: 10px;
+      }
+
+      .field {
+        display: grid;
+        grid-template-columns: 130px minmax(0, 1fr);
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid #edf0f5;
+      }
+
+      .field:last-child {
+        border-bottom: 0;
+      }
+
+      .label {
+        color: var(--muted);
+      }
+
+      .value {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-weight: 600;
+      }
+
+      .logs {
+        padding: 18px;
+      }
+
+      .log-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin: -4px 0 10px;
+      }
+
+      pre {
+        min-height: 620px;
+        max-height: 720px;
+        margin: 0;
+        padding: 14px;
+        overflow: auto;
+        border-radius: 6px;
+        background: #111827;
+        color: #d1d5db;
+        font-size: 12px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+
+      @media (max-width: 920px) {
+        .page {
+          padding: 18px;
+        }
+
+        .topbar,
+        .layout {
+          display: block;
+        }
+
+        .endpoint {
+          min-width: 0;
+          margin-top: 16px;
+        }
+
+        .side {
+          display: grid;
+          grid-template-columns: 1fr;
+          margin-top: 20px;
+        }
+
+        .calendar-head {
+          flex-wrap: wrap;
+        }
+
+        .month-title {
+          order: -1;
+          width: 100%;
+        }
+
+        .day {
+          min-height: 78px;
+          padding: 7px;
+        }
+
+        .day-date,
+        .status-pill {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="topbar">
+        <div>
+          <h1>会议室提醒日历测试</h1>
+          <p class="subtitle">点击日期，把它作为接口里的“今天”进行测试。红框表示当前选中的测试日期。</p>
+        </div>
+        <div class="endpoint">
+          <label for="endpoint">接口地址</label>
+          <input id="endpoint" type="text" value="/api/meeting-room/should-remind">
+        </div>
+      </header>
+
+      <section class="layout">
+        <div class="panel calendar">
+          <div class="calendar-head">
+            <div class="nav-group">
+              <button class="icon-button" id="prevMonth" type="button" aria-label="上个月">&lt;</button>
+              <button class="secondary-button" id="todayButton" type="button">今天</button>
+              <button class="icon-button" id="nextMonth" type="button" aria-label="下个月">&gt;</button>
+            </div>
+            <div class="month-title" id="monthTitle"></div>
+            <div class="select-group">
+              <select id="yearSelect" aria-label="年份"></select>
+              <select id="monthSelect" aria-label="月份"></select>
+            </div>
+          </div>
+
+          <div class="weekdays" aria-hidden="true">
+            <div class="weekday">周一</div>
+            <div class="weekday">周二</div>
+            <div class="weekday">周三</div>
+            <div class="weekday">周四</div>
+            <div class="weekday">周五</div>
+            <div class="weekday">周六</div>
+            <div class="weekday">周日</div>
+          </div>
+          <div class="days" id="days"></div>
+        </div>
+
+        <aside class="side">
+          <section class="panel result">
+            <h2 class="section-title">接口结果</h2>
+            <div class="result-banner" id="resultBanner">
+              <p class="banner-title">请选择一个日期</p>
+              <p class="banner-text">页面会把选中日期作为 date 参数请求接口。</p>
+            </div>
+            <div class="fields" id="fields"></div>
+          </section>
+
+          <section class="panel logs">
+            <h2 class="section-title">日志</h2>
+            <div class="log-actions">
+              <button class="secondary-button" id="clearLogs" type="button">清空日志</button>
+            </div>
+            <pre id="logs"></pre>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const PRODUCTION_ENDPOINT = "https://book-meeting-room.zh-cn.edgeone.cool/api/meeting-room/should-remind";
+      const DEFAULT_ENDPOINT = "/api/meeting-room/should-remind";
+      const state = {
+        viewYear: new Date().getFullYear(),
+        viewMonth: new Date().getMonth(),
+        selectedDate: formatDate(new Date()),
+        responses: new Map()
+      };
+
+      const els = {
+        endpoint: document.getElementById("endpoint"),
+        prevMonth: document.getElementById("prevMonth"),
+        nextMonth: document.getElementById("nextMonth"),
+        todayButton: document.getElementById("todayButton"),
+        yearSelect: document.getElementById("yearSelect"),
+        monthSelect: document.getElementById("monthSelect"),
+        monthTitle: document.getElementById("monthTitle"),
+        days: document.getElementById("days"),
+        resultBanner: document.getElementById("resultBanner"),
+        fields: document.getElementById("fields"),
+        logs: document.getElementById("logs"),
+        clearLogs: document.getElementById("clearLogs")
+      };
+
+      function pad(value) {
+        return String(value).padStart(2, "0");
+      }
+
+      function formatDate(date) {
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+      }
+
+      function parseDate(dateStr) {
+        const [year, month, day] = dateStr.split("-").map(Number);
+        return new Date(year, month - 1, day);
+      }
+
+      function mondayZeroWeekday(date) {
+        const day = date.getDay();
+        return day === 0 ? 6 : day - 1;
+      }
+
+      function addDays(date, days) {
+        const next = new Date(date);
+        next.setDate(next.getDate() + days);
+        return next;
+      }
+
+      function log(message, data) {
+        const time = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+        const detail = data === undefined ? "" : `\n${JSON.stringify(data, null, 2)}`;
+        els.logs.textContent = `[${time}] ${message}${detail}\n\n${els.logs.textContent}`;
+      }
+
+      function buildEndpoint(dateStr) {
+        const raw = els.endpoint.value.trim() || DEFAULT_ENDPOINT;
+        const base = location.protocol === "file:" ? PRODUCTION_ENDPOINT : location.href;
+        const url = new URL(raw, base);
+        const pageParams = new URLSearchParams(location.search);
+
+        for (const [key, value] of pageParams.entries()) {
+          if (key.startsWith("eo_") && !url.searchParams.has(key)) {
+            url.searchParams.set(key, value);
+          }
+        }
+
+        url.searchParams.set("date", dateStr);
+        return url.toString();
+      }
+
+      function fillSelects() {
+        const currentYear = new Date().getFullYear();
+
+        for (let year = currentYear - 5; year <= currentYear + 5; year += 1) {
+          const option = document.createElement("option");
+          option.value = String(year);
+          option.textContent = `${year} 年`;
+          els.yearSelect.append(option);
+        }
+
+        for (let month = 0; month < 12; month += 1) {
+          const option = document.createElement("option");
+          option.value = String(month);
+          option.textContent = `${month + 1} 月`;
+          els.monthSelect.append(option);
+        }
+      }
+
+      function renderCalendar() {
+        els.yearSelect.value = String(state.viewYear);
+        els.monthSelect.value = String(state.viewMonth);
+        els.monthTitle.textContent = `${state.viewYear} 年 ${state.viewMonth + 1} 月`;
+        els.days.innerHTML = "";
+
+        const firstOfMonth = new Date(state.viewYear, state.viewMonth, 1);
+        const gridStart = addDays(firstOfMonth, -mondayZeroWeekday(firstOfMonth));
+        const todayStr = formatDate(new Date());
+
+        for (let index = 0; index < 42; index += 1) {
+          const date = addDays(gridStart, index);
+          const dateStr = formatDate(date);
+          const button = document.createElement("button");
+          const cached = state.responses.get(dateStr);
+
+          button.type = "button";
+          button.className = [
+            "day",
+            date.getMonth() === state.viewMonth ? "" : "outside",
+            dateStr === todayStr ? "today" : "",
+            dateStr === state.selectedDate ? "selected" : ""
+          ].filter(Boolean).join(" ");
+          button.dataset.date = dateStr;
+          button.innerHTML = `
+            <span class="day-number">${date.getDate()}</span>
+            <span class="day-date">${dateStr}</span>
+            ${cached ? `<span class="status-pill">${cached.shouldRemind ? "需要提醒" : "无需提醒"}</span>` : ""}
+          `;
+          button.addEventListener("click", () => selectDate(dateStr));
+          els.days.append(button);
+        }
+      }
+
+      function renderResult(data) {
+        if (!data) {
+          els.resultBanner.className = "result-banner";
+          els.resultBanner.innerHTML = `
+            <p class="banner-title">请选择一个日期</p>
+            <p class="banner-text">页面会把选中日期作为 date 参数请求接口。</p>
+          `;
+          els.fields.innerHTML = "";
+          return;
+        }
+
+        const bannerClass = data.success
+          ? data.shouldRemind ? "ok" : ""
+          : "warn";
+        els.resultBanner.className = `result-banner ${bannerClass}`;
+        els.resultBanner.innerHTML = `
+          <p class="banner-title">${data.shouldRemind ? "需要提醒" : "无需提醒"}</p>
+          <p class="banner-text">${escapeHtml(data.message || data.userNotice || "无说明")}</p>
+        `;
+
+        const rows = [
+          ["测试日期", data.date],
+          ["查询成功", stringifyValue(data.success)],
+          ["今天是工作日", stringifyValue(data.todayIsWorkday)],
+          ["目标日期", stringifyValue(data.targetDate)],
+          ["目标日是工作日", stringifyValue(data.targetIsWorkday)],
+          ["目标日星期", weekdayText(data.targetWeekday)],
+          ["是否提醒", stringifyValue(data.shouldRemind)],
+          ["是否兜底", stringifyValue(data.isFallback)],
+          ["用户提示", stringifyValue(data.userNotice)],
+          ["错误", stringifyValue(data.error)]
+        ];
+
+        els.fields.innerHTML = rows.map(([label, value]) => `
+          <div class="field">
+            <div class="label">${label}</div>
+            <div class="value">${escapeHtml(value)}</div>
+          </div>
+        `).join("");
+      }
+
+      function weekdayText(value) {
+        if (value === null || value === undefined) {
+          return "-";
+        }
+
+        return ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][value] || String(value);
+      }
+
+      function stringifyValue(value) {
+        if (value === null || value === undefined || value === "") {
+          return "-";
+        }
+
+        if (typeof value === "boolean") {
+          return value ? "是" : "否";
+        }
+
+        return String(value);
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      async function selectDate(dateStr) {
+        state.selectedDate = dateStr;
+        const selected = parseDate(dateStr);
+        state.viewYear = selected.getFullYear();
+        state.viewMonth = selected.getMonth();
+        renderCalendar();
+        els.resultBanner.className = "result-banner";
+        els.resultBanner.innerHTML = `
+          <p class="banner-title">请求中</p>
+          <p class="banner-text">正在用 ${dateStr} 测试接口。</p>
+        `;
+
+        const url = buildEndpoint(dateStr);
+        log("发送请求", { url, date: dateStr });
+
+        try {
+          const startedAt = performance.now();
+          const response = await fetch(url, { method: "GET" });
+          const elapsedMs = Math.round(performance.now() - startedAt);
+          const text = await response.text();
+          let data;
+
+          try {
+            data = JSON.parse(text);
+          } catch (error) {
+            throw new Error(`响应不是 JSON：${text.slice(0, 200)}`);
+          }
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          state.responses.set(dateStr, data);
+          renderCalendar();
+          renderResult(data);
+          log("收到响应", { status: response.status, elapsedMs, data });
+        } catch (error) {
+          const data = {
+            success: false,
+            date: dateStr,
+            shouldRemind: null,
+            isFallback: false,
+            message: "测试页面请求失败",
+            error: error.message
+          };
+          renderResult(data);
+          log("请求失败", { date: dateStr, error: error.message });
+        }
+      }
+
+      function moveMonth(delta) {
+        const next = new Date(state.viewYear, state.viewMonth + delta, 1);
+        state.viewYear = next.getFullYear();
+        state.viewMonth = next.getMonth();
+        renderCalendar();
+      }
+
+      fillSelects();
+      renderCalendar();
+      renderResult(null);
+      log("测试页面已加载", { defaultEndpoint: DEFAULT_ENDPOINT });
+
+      els.prevMonth.addEventListener("click", () => moveMonth(-1));
+      els.nextMonth.addEventListener("click", () => moveMonth(1));
+      els.todayButton.addEventListener("click", () => selectDate(formatDate(new Date())));
+      els.yearSelect.addEventListener("change", () => {
+        state.viewYear = Number(els.yearSelect.value);
+        renderCalendar();
+      });
+      els.monthSelect.addEventListener("change", () => {
+        state.viewMonth = Number(els.monthSelect.value);
+        renderCalendar();
+      });
+      els.clearLogs.addEventListener("click", () => {
+        els.logs.textContent = "";
+      });
+    </script>
+  </body>
+</html>

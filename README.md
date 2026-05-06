@@ -44,6 +44,8 @@ bookMeetingRoom/
   .env.example
   .gitignore
   edgeone.json
+  index.html
+  calendar-test.html
   package.json
   README.md
 ```
@@ -52,6 +54,8 @@ bookMeetingRoom/
 
 - `functions/api/meeting-room/should-remind.js`：EdgeOne Pages 接口入口
 - `functions/_lib/reminder.js`：日期和提醒规则计算
+- `calendar-test.html`：本地和线上可用的日历测试页
+- `index.html`：部署后的说明页
 - `test/reminder.test.js`：规则测试
 - `scripts/local-server.js`：本地调试服务
 
@@ -127,10 +131,10 @@ JIEJIARI_API_KEY=
 9. 部署完成后，访问接口确认结果：
 
 ```text
-https://你的域名/api/meeting-room/should-remind?date=2026-05-11
+https://book-meeting-room.zh-cn.edgeone.cool/api/meeting-room/should-remind?date=2026-05-11
 ```
 
-直接打开预览域名根路径 `/` 只会显示项目说明页；快捷指令和接口测试都应访问 `/api/meeting-room/should-remind`。
+直接打开域名根路径 `/` 会显示项目说明页；快捷指令和接口测试都应访问 `/api/meeting-room/should-remind`。
 
 EdgeOne Pages 会根据目录结构生成接口路由：
 
@@ -225,7 +229,7 @@ date=YYYY-MM-DD
 
 ```text
 1. 获取 URL 内容
-   URL: https://你的域名/api/meeting-room/should-remind
+   URL: https://book-meeting-room.zh-cn.edgeone.cool/api/meeting-room/should-remind
    方法: GET
 
 2. 获取字典值 shouldRemind
@@ -280,6 +284,26 @@ npm run dev
 ```text
 http://localhost:8787/api/meeting-room/should-remind?date=2026-05-11
 ```
+
+打开日历测试页：
+
+```text
+/Users/xiaonan/Desktop/hsd/bookMeetingRoom/calendar-test.html
+```
+
+部署后也可以访问：
+
+```text
+https://book-meeting-room.zh-cn.edgeone.cool/calendar-test.html
+```
+
+日历测试页默认使用相对接口：
+
+```text
+/api/meeting-room/should-remind
+```
+
+如果使用 EdgeOne 的预览链接，页面会自动把预览链接中的 `eo_` 授权参数带到接口请求里。若手动填写完整接口地址，需要确保该地址不是已过期的预览地址。
 
 腾讯 EdgeOne CLI 也可用于本地调试：
 
