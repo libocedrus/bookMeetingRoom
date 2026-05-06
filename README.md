@@ -1,6 +1,6 @@
 # 会议室预定提醒
 
-这是一个用于 iPhone 快捷指令的会议室预定提醒服务。服务部署在腾讯 EdgeOne Pages Edge Functions 上，每天由 iPhone 快捷指令调用一次，判断当天是否需要打开名为 `预定会议室` 的闹钟。
+这是一个用于 iPhone 快捷指令的会议室预定提醒服务。服务部署在腾讯 EdgeOne Pages Functions 上，每天由 iPhone 快捷指令调用一次，判断当天是否需要打开名为 `预定会议室` 的闹钟。
 
 ## 工作方式
 
@@ -31,7 +31,7 @@ https://api.jiejiariapi.com/v1/workdays/{year}
 
 ```text
 bookMeetingRoom/
-  edge-functions/
+  functions/
     _lib/
       reminder.js
     api/
@@ -50,8 +50,8 @@ bookMeetingRoom/
 
 主要文件：
 
-- `edge-functions/api/meeting-room/should-remind.js`：EdgeOne Pages 接口入口
-- `edge-functions/_lib/reminder.js`：日期和提醒规则计算
+- `functions/api/meeting-room/should-remind.js`：EdgeOne Pages 接口入口
+- `functions/_lib/reminder.js`：日期和提醒规则计算
 - `test/reminder.test.js`：规则测试
 - `scripts/local-server.js`：本地调试服务
 

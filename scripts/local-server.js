@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import http from "node:http";
-import { onRequestGet } from "../edge-functions/api/meeting-room/should-remind.js";
+import { onRequestGet } from "../functions/api/meeting-room/should-remind.js";
 
 const PORT = Number(process.env.PORT ?? 8787);
 
