@@ -5,7 +5,12 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "dev": "node scripts/local-server.js"
+    "dev": "npx wrangler dev",
+    "deploy": "npx wrangler deploy",
+    "local:legacy": "node scripts/local-server.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.88.0"
   },
   "engines": {
     "node": ">=18"

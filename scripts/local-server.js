@@ -1,8 +1,18 @@
 import { readFileSync } from "node:fs";
 import http from "node:http";
-import { onRequestGet } from "../functions/api/meeting-room/should-remind.js";
+import { extname, join, normalize } from "node:path";
+import worker from "../src/worker.js";
 
 const PORT = Number(process.env.PORT ?? 8787);
+const PUBLIC_DIR = "public";
+
+const CONTENT_TYPES = {
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml"
+};
 
 function loadEnv() {
   try {
@@ -36,17 +46,36 @@ function loadEnv() {
 loadEnv();
 
 const server = http.createServer(async (req, res) => {
-  if (req.method !== "GET" || !req.url.startsWith("/api/meeting-room/should-remind")) {
+  if (req.method === "GET" && !req.url.startsWith("/api/meeting-room/should-remind")) {
+    const url = new URL(`http://localhost:${PORT}${req.url}`);
+    const pathname = url.pathname === "/" ? "/index.html" : url.pathname;
+    const normalized = normalize(pathname).replace(/^(\.\.[/\\])+/, "");
+    const filePath = join(PUBLIC_DIR, normalized);
+
+    try {
+      const body = readFileSync(filePath);
+      const type = CONTENT_TYPES[extname(filePath)] || "application/octet-stream";
+      res.writeHead(200, { "content-type": type });
+      res.end(body);
+      return;
+    } catch {
+      res.writeHead(404, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ success: false, message: "Not found" }));
+      return;
+    }
+  }
+
+  if (req.method !== "GET") {
     res.writeHead(404, { "content-type": "application/json; charset=utf-8" });
     res.end(JSON.stringify({ success: false, message: "Not found" }));
     return;
   }
 
   try {
-    const response = await onRequestGet({
-      request: new Request(`http://localhost:${PORT}${req.url}`),
-      env: process.env
-    });
+    const response = await worker.fetch(
+      new Request(`http://localhost:${PORT}${req.url}`),
+      process.env
+    );
     const body = await response.text();
 
     res.writeHead(response.status, Object.fromEntries(response.headers.entries()));

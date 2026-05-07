@@ -1,14 +1,14 @@
 # 会议室预定提醒
 
-这是一个用于 iPhone 快捷指令的会议室预定提醒服务。服务部署在腾讯 EdgeOne Pages Functions 上，每天由 iPhone 快捷指令调用一次，判断当天是否需要打开名为 `预定会议室` 的闹钟。
+这是一个用于 iPhone 快捷指令的会议室预定提醒服务。服务部署在 Cloudflare Workers 上，每天由 iPhone 快捷指令调用一次，判断当天是否需要打开名为 `预定会议室` 的闹钟。
 
 ## 工作方式
 
 ```text
 iPhone 快捷指令
-  -> 调用 EdgeOne Pages 接口
-  -> 接口查询中国大陆节假日和调休工作日
-  -> 接口返回 shouldRemind
+  -> 调用 Cloudflare Worker 接口
+  -> Worker 查询中国大陆节假日和调休工作日
+  -> Worker 返回 shouldRemind
   -> 快捷指令打开或关闭“预定会议室”闹钟
 ```
 
@@ -31,116 +31,193 @@ https://api.jiejiariapi.com/v1/workdays/{year}
 
 ```text
 bookMeetingRoom/
-  functions/
-    _lib/
-      reminder.js
-    api/
-      meeting-room/
-        should-remind.js
+  public/
+    index.html
+    calendar-test.html
   scripts/
     local-server.js
+  src/
+    reminder.js
+    worker.js
   test/
     reminder.test.js
   .env.example
   .gitignore
-  edgeone.json
-  index.html
-  calendar-test.html
   package.json
   README.md
+  wrangler.jsonc
 ```
 
 主要文件：
 
-- `functions/api/meeting-room/should-remind.js`：EdgeOne Pages 接口入口
-- `functions/_lib/reminder.js`：日期和提醒规则计算
-- `calendar-test.html`：本地和线上可用的日历测试页
-- `index.html`：部署后的说明页
+- `src/worker.js`：Cloudflare Worker 入口，处理 `/api/meeting-room/should-remind`
+- `src/reminder.js`：日期和提醒规则计算
+- `public/index.html`：部署后的说明页
+- `public/calendar-test.html`：本地和线上可用的日历测试页
 - `test/reminder.test.js`：规则测试
-- `scripts/local-server.js`：本地调试服务
+- `wrangler.jsonc`：Cloudflare Workers 部署配置
 
-## 上传到 GitHub
+## Cloudflare 准备
 
-只把当前项目文件夹作为一个独立仓库上传：
+1. 注册或登录 Cloudflare：
+
+```text
+https://dash.cloudflare.com/
+```
+
+2. 进入：
+
+```text
+Workers & Pages
+```
+
+3. 如果是第一次使用 Workers，按页面提示设置 `workers.dev` 子域名。
+
+Cloudflare Workers 默认会给每个 Worker 一个公开的 `workers.dev` 地址，格式通常是：
+
+```text
+https://book-meeting-room.你的子域名.workers.dev
+```
+
+这个地址可以直接给 iPhone 快捷指令使用。Cloudflare 官方也说明，`workers.dev` 子域名用于快速开始，无需先绑定自定义域名。参考：Cloudflare Workers `workers.dev` 文档。
+
+## 本地部署方式
+
+### 1. 登录 Cloudflare
+
+在本项目根目录运行：
+
+```bash
+cd /Users/xiaonan/Desktop/hsd/bookMeetingRoom
+npx wrangler login
+```
+
+命令会打开浏览器，登录并授权 Wrangler。
+
+### 2. 本地测试
+
+运行规则测试：
+
+```bash
+npm test
+```
+
+本地启动 Worker：
+
+```bash
+npm run dev
+```
+
+Wrangler 会显示一个本地地址，通常是：
+
+```text
+http://localhost:8787
+```
+
+测试接口：
+
+```text
+http://localhost:8787/api/meeting-room/should-remind?date=2026-05-11
+```
+
+打开日历测试页：
+
+```text
+http://localhost:8787/calendar-test.html
+```
+
+### 3. 部署
+
+```bash
+npm run deploy
+```
+
+部署成功后，Wrangler 会输出线上地址，类似：
+
+```text
+https://book-meeting-room.你的子域名.workers.dev
+```
+
+测试：
+
+```text
+https://book-meeting-room.你的子域名.workers.dev/api/meeting-room/should-remind?date=2026-05-11
+```
+
+如果看到 JSON，说明部署成功。
+
+## GitHub 自动部署
+
+也可以让 Cloudflare 直接连接 GitHub 仓库自动部署。
+
+1. 使用 GitHub Desktop 上传本项目文件夹：
 
 ```text
 /Users/xiaonan/Desktop/hsd/bookMeetingRoom
 ```
 
-使用 GitHub Desktop：
-
-1. 打开 GitHub Desktop 并登录 GitHub 账号。
-2. 选择 `File` -> `Add Local Repository...`。
-3. 选择本项目文件夹。
-4. 如果 GitHub Desktop 提示该文件夹还不是 Git 仓库，选择创建仓库。
-5. 在左下角填写提交信息，例如：
+2. 打开 Cloudflare Dashboard。
+3. 进入：
 
 ```text
-Initial meeting room reminder service
+Workers & Pages
 ```
 
-6. 点击 `Commit to main`。
-7. 点击 `Publish repository`。
-8. 仓库名建议使用：
+4. 选择创建应用或导入项目。
+5. 选择 GitHub 仓库：
 
 ```text
-book-meeting-room
+bookMeetingRoom
 ```
 
-9. 选择公开或私有仓库。公开仓库配置最简单；私有仓库需要在 EdgeOne Pages 授权访问该仓库。
-
-## 部署到 EdgeOne Pages
-
-1. 打开腾讯 EdgeOne Pages。
-2. 使用腾讯云账号登录。
-3. 新建 Pages 项目。
-4. 选择从 GitHub 导入项目，并授权 EdgeOne Pages 访问 GitHub 仓库。
-5. 选择仓库：
+6. 框架预设选择：
 
 ```text
-book-meeting-room
+None / Worker
 ```
 
-6. 设置项目根目录：
+7. 构建命令可留空，或设置为：
+
+```text
+npm test
+```
+
+8. 部署命令使用 Wrangler 配置。项目根目录保持：
 
 ```text
 /
 ```
 
-7. 设置构建参数：
+当前项目的 Cloudflare 配置在：
 
 ```text
-Install command: 留空
-Build command: 留空
-Output directory: .
+wrangler.jsonc
 ```
 
-8. 设置环境变量：
+## 环境变量
 
-```text
-FALLBACK_SHOULD_REMIND=true
-JIEJIARI_API_KEY=
+`wrangler.jsonc` 中已经配置：
+
+```json
+{
+  "vars": {
+    "FALLBACK_SHOULD_REMIND": "true"
+  }
+}
 ```
 
-环境变量说明：
+含义：
 
 - `FALLBACK_SHOULD_REMIND=true`：节假日接口异常时默认返回 `shouldRemind=true`，避免漏提醒。
 - `FALLBACK_SHOULD_REMIND=false`：节假日接口异常时默认返回 `shouldRemind=false`，避免误打扰。
-- `JIEJIARI_API_KEY`：可选。留空时使用匿名接口；如果已申请 API Key，可以填入。
 
-9. 部署完成后，访问接口确认结果：
+如果需要配置 `JIEJIARI_API_KEY`，建议使用 Secret，不要写进 Git 仓库：
 
-```text
-https://book-meeting-room-qhd7g7gj.edgeone.cool/api/meeting-room/should-remind?date=2026-05-11
+```bash
+npx wrangler secret put JIEJIARI_API_KEY
 ```
 
-直接打开域名根路径 `/` 会显示项目说明页；快捷指令和接口测试都应访问 `/api/meeting-room/should-remind`。
-
-EdgeOne Pages 会根据目录结构生成接口路由：
-
-```text
-/api/meeting-room/should-remind
-```
+Cloudflare 官方建议敏感信息使用 Secrets，而不是明文环境变量。普通配置可以放在 `vars`，敏感 token 应使用 Secret。
 
 ## 接口
 
@@ -201,14 +278,32 @@ date=YYYY-MM-DD
 }
 ```
 
+## 日历测试页
+
+部署成功后访问：
+
+```text
+https://book-meeting-room.你的子域名.workers.dev/calendar-test.html
+```
+
+测试页会默认使用相对接口：
+
+```text
+/api/meeting-room/should-remind
+```
+
+所以部署到任何 Workers 域名或自定义域名后都可以直接使用。
+
+如果你直接双击打开本地 HTML 文件，需要把测试页顶部“接口地址”改成部署后的完整接口地址。
+
 ## iPhone 快捷指令
 
 ### 前置检查
 
-在配置快捷指令前，先用 Safari 打开：
+在配置快捷指令前，先用 iPhone Safari 打开你的 Worker 接口：
 
 ```text
-https://book-meeting-room-qhd7g7gj.edgeone.cool/api/meeting-room/should-remind
+https://book-meeting-room.你的子域名.workers.dev/api/meeting-room/should-remind
 ```
 
 正常情况下应该看到 JSON，类似：
@@ -220,7 +315,7 @@ https://book-meeting-room-qhd7g7gj.edgeone.cool/api/meeting-room/should-remind
 }
 ```
 
-如果看到 EdgeOne 的 `401 UNAUTHORIZED`、`eo_time missing` 或 HTML 错误页，说明当前域名还处于预览/受限访问状态。此时快捷指令拿到的不是 JSON，而是网页文本，后续“获取字典值”会失败。需要先在 EdgeOne Pages 中关闭访问限制，或使用控制台生成的完整预览链接。
+只有 iPhone Safari 能直接看到 JSON，快捷指令才会稳定运行。
 
 ### 创建闹钟
 
@@ -248,7 +343,7 @@ https://book-meeting-room-qhd7g7gj.edgeone.cool/api/meeting-room/should-remind
 
 ```text
 搜索操作：获取 URL 内容
-URL：https://book-meeting-room-qhd7g7gj.edgeone.cool/api/meeting-room/should-remind
+URL：https://book-meeting-room.你的子域名.workers.dev/api/meeting-room/should-remind
 方法：GET
 ```
 
@@ -291,7 +386,7 @@ shouldRemind
 文本内容：上一步获取到的 shouldRemind
 ```
 
-添加时，点输入框上方的变量，选择第 2 步输出的 `shouldRemind` / `字典值`。
+添加时，点输入框上方的变量，选择第 2 步输出的 `shouldRemind` 或 `字典值`。
 
 继续添加操作：
 
@@ -423,52 +518,23 @@ success
 09:00 预定会议室闹钟
 ```
 
-## 本地验证
+## 自定义域名
 
-运行规则测试：
+Cloudflare Workers 可以先使用 `workers.dev` 地址，不需要备案或自定义域名。
 
-```bash
-cd /Users/xiaonan/Desktop/hsd/bookMeetingRoom
-npm test
-```
+如果将来要绑定自己的域名：
 
-启动本地调试服务：
-
-```bash
-npm run dev
-```
-
-访问：
+1. 在 Cloudflare 中添加你的域名为 Zone。
+2. 进入 Worker。
+3. 打开：
 
 ```text
-http://localhost:8787/api/meeting-room/should-remind?date=2026-05-11
+Settings -> Domains & Routes
 ```
 
-打开日历测试页：
+4. 添加 Custom Domain。
 
-```text
-/Users/xiaonan/Desktop/hsd/bookMeetingRoom/calendar-test.html
-```
-
-部署后也可以访问：
-
-```text
-https://book-meeting-room-qhd7g7gj.edgeone.cool/calendar-test.html
-```
-
-日历测试页默认使用相对接口：
-
-```text
-/api/meeting-room/should-remind
-```
-
-如果使用 EdgeOne 的预览链接，页面会自动把预览链接中的 `eo_` 授权参数带到接口请求里。若手动填写完整接口地址，需要确保该地址不是已过期的预览地址。
-
-腾讯 EdgeOne CLI 也可用于本地调试：
-
-```bash
-edgeone pages dev
-```
+Cloudflare 官方说明，Workers 支持三类入口：`workers.dev`、Custom Domains、Routes。`workers.dev` 适合快速开始；正式生产更推荐自定义域名或路由。
 
 ## 可靠性说明
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateReminder, weekdayMondayZero } from "../functions/_lib/reminder.js";
+import { calculateReminder, weekdayMondayZero } from "../src/reminder.js";
 
 function workdays(dates) {
   return new Set(dates);

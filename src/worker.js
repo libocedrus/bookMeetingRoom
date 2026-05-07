@@ -4,7 +4,7 @@ import {
   formatShanghaiDate,
   getYear,
   normalizeJiejiariWorkdays
-} from "../../_lib/reminder.js";
+} from "./reminder.js";
 
 const API_BASE_URL = "https://api.jiejiariapi.com/v1/workdays";
 
@@ -51,7 +51,7 @@ async function loadWorkdaySet(dateStr, env) {
   return workdaySet;
 }
 
-export async function onRequestGet({ request, env }) {
+async function handleShouldRemind(request, env) {
   const url = new URL(request.url);
   const dateStr = url.searchParams.get("date") || formatShanghaiDate();
   const fallbackShouldRemind = env?.FALLBACK_SHOULD_REMIND !== "false";
@@ -63,3 +63,26 @@ export async function onRequestGet({ request, env }) {
     return json(buildFallbackResult(dateStr, fallbackShouldRemind, error));
   }
 }
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (request.method === "GET" && url.pathname === "/api/meeting-room/should-remind") {
+      return handleShouldRemind(request, env);
+    }
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, OPTIONS",
+          "access-control-allow-headers": "content-type"
+        }
+      });
+    }
+
+    return env.ASSETS.fetch(request);
+  }
+};
