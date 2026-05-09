@@ -194,7 +194,7 @@
       .day {
         position: relative;
         min-height: 104px;
-        padding: 10px;
+        padding: 10px 10px 38px;
         border-right: 1px solid var(--line);
         border-top: 1px solid var(--line);
         background: #fff;
@@ -260,17 +260,32 @@
 
       .status-pill {
         position: absolute;
+        left: 8px;
         right: 8px;
-        bottom: 8px;
-        max-width: calc(100% - 16px);
-        padding: 4px 7px;
-        border-radius: 999px;
-        background: #eef2ff;
-        color: #3730a3;
+        bottom: 7px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 8px;
+        border-radius: 6px;
         font-size: 12px;
+        font-weight: 700;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+
+      .status-pill.remind {
+        border: 1px solid #fca5a5;
+        background: #dc2626;
+        color: #ffffff;
+      }
+
+      .status-pill.no-remind {
+        border: 1px solid #86efac;
+        background: #16a34a;
+        color: #ffffff;
       }
 
       .workday-badge {
@@ -608,7 +623,7 @@
             <span class="day-number">${date.getDate()}</span>
             ${knownWorkday === undefined ? "" : `<span class="workday-badge">${knownWorkday ? "工作日" : "休息日"}</span>`}
             <span class="day-date">${dateStr}</span>
-            ${cached ? `<span class="status-pill">${cached.shouldRemind ? "需要提醒" : "无需提醒"}</span>` : ""}
+            ${cached ? `<span class="status-pill ${cached.shouldRemind ? "remind" : "no-remind"}">${cached.shouldRemind ? "需要提醒" : "无需提醒"}</span>` : ""}
           `;
           button.addEventListener("click", () => selectDate(dateStr));
           els.days.append(button);
