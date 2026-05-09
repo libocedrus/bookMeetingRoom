@@ -7,7 +7,7 @@
 部署完成后，将下面地址中的用户名和仓库名替换为你的 GitHub Pages 地址：
 
 ```text
-https://你的用户名.github.io/book-meeting-room/data/today.json
+https://libocedrus.github.io/book-meeting-room/data/today.json
 ```
 
 打开后应看到 JSON，类似：
@@ -55,7 +55,7 @@ https://你的用户名.github.io/book-meeting-room/data/today.json
 配置：
 
 ```text
-URL：https://你的用户名.github.io/book-meeting-room/data/today.json
+URL：https://libocedrus.github.io/bookMeetingRoom/data/today.json
 方法：GET
 ```
 
@@ -216,7 +216,7 @@ URL：https://你的用户名.github.io/book-meeting-room/data/today.json
 如果 iPhone Safari 无法访问 GitHub Pages，可以尝试：
 
 ```text
-https://raw.githubusercontent.com/你的用户名/仓库名/gh-pages/data/today.json
+https://raw.githubusercontent.com/libocedrus/仓库名/gh-pages/data/today.json
 ```
 
 但 GitHub Raw 在中国大陆同样不保证稳定。长期稳定直连仍需要可访问的静态托管地址。
