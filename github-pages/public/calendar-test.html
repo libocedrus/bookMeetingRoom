@@ -399,7 +399,7 @@
         </div>
         <div class="endpoint">
           <label for="endpoint">提醒数据地址</label>
-          <input id="endpoint" type="text" value="/data/reminders-{year}.json">
+          <input id="endpoint" type="text" value="data/reminders-{year}.json">
         </div>
       </header>
 
@@ -452,7 +452,7 @@
     </main>
 
     <script>
-      const DEFAULT_DATA_TEMPLATE = "/data/reminders-{year}.json";
+      const DEFAULT_DATA_TEMPLATE = "data/reminders-{year}.json";
       const state = {
         viewYear: new Date().getFullYear(),
         viewMonth: new Date().getMonth(),
