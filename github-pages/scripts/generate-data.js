@@ -332,18 +332,28 @@ async function main() {
   }
 
   const allWorkdays = mergeWorkdayMaps(yearDataList);
-  const reminders = {};
-  let cursor = `${currentYear}-01-01`;
-  const last = `${currentYear}-12-31`;
   const aggregateStatus = yearDataList.some((item) => item.status === "stale_data")
     ? "stale_data"
     : yearDataList.some((item) => item.status === "partial_source_fallback")
       ? "partial_source_fallback"
       : "ok";
 
-  while (cursor <= last) {
-    reminders[cursor] = calculateReminder(cursor, allWorkdays, aggregateStatus);
-    cursor = addDays(cursor, 1);
+  for (const year of years) {
+    const reminders = {};
+    let cursor = `${year}-01-01`;
+    const last = `${year}-12-31`;
+
+    while (cursor <= last) {
+      reminders[cursor] = calculateReminder(cursor, allWorkdays, aggregateStatus);
+      cursor = addDays(cursor, 1);
+    }
+
+    await writeJson(`reminders-${year}.json`, {
+      year,
+      status: aggregateStatus,
+      updatedAt,
+      reminders
+    });
   }
 
   const todayResult = {
@@ -362,12 +372,6 @@ async function main() {
     todayResult.message = "工作日数据更新失败，已使用旧数据，请手动确认";
   }
 
-  await writeJson(`reminders-${currentYear}.json`, {
-    year: currentYear,
-    status: aggregateStatus,
-    updatedAt,
-    reminders
-  });
   await writeJson("today.json", todayResult);
   await writeJson("status.json", {
     status: aggregateStatus,

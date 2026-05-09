@@ -40,7 +40,7 @@
       }
 
       .page {
-        max-width: 1180px;
+        max-width: 1680px;
         margin: 0 auto;
         padding: 28px;
       }
@@ -88,8 +88,10 @@
 
       .layout {
         display: grid;
-        grid-template-columns: minmax(620px, 0.95fr) minmax(720px, 1.05fr);
+        grid-template-columns: minmax(744px, 1.2fr) minmax(340px, 0.55fr) minmax(540px, 0.9fr);
         gap: 20px;
+        justify-content: center;
+        align-items: start;
       }
 
       .panel {
@@ -144,6 +146,16 @@
         padding: 0 12px;
       }
 
+      #todayButton {
+        width: 60px;
+        min-width: 60px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+        line-height: 1;
+      }
+
       .select-group select {
         height: 36px;
         padding: 0 30px 0 10px;
@@ -194,12 +206,28 @@
       }
 
       .day:hover {
-        background: #f8fbff;
+        background: #eaf3ff;
       }
 
       .day.outside {
         background: #f8fafc;
         color: #9ca3af;
+      }
+
+      .day.workday {
+        background: #eefbf3;
+      }
+
+      .day.non-workday {
+        background: #f5f7fb;
+      }
+
+      .day.outside.workday {
+        background: #f2fbf5;
+      }
+
+      .day.outside.non-workday {
+        background: #f7f8fb;
       }
 
       .day.selected {
@@ -245,11 +273,25 @@
         text-overflow: ellipsis;
       }
 
+      .workday-badge {
+        position: absolute;
+        right: 8px;
+        top: 8px;
+        padding: 3px 6px;
+        border-radius: 999px;
+        background: #dcfce7;
+        color: #166534;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .day.non-workday .workday-badge {
+        background: #e5e7eb;
+        color: #6b7280;
+      }
+
       .side {
-        display: grid;
-        grid-template-columns: minmax(340px, 0.85fr) minmax(360px, 1.15fr);
-        align-items: start;
-        gap: 20px;
+        display: contents;
       }
 
       .result {
@@ -384,7 +426,8 @@
         }
 
         .day-date,
-        .status-pill {
+        .status-pill,
+        .workday-badge {
           display: none;
         }
       }
@@ -457,7 +500,9 @@
         viewYear: new Date().getFullYear(),
         viewMonth: new Date().getMonth(),
         selectedDate: formatDate(new Date()),
-        responses: new Map()
+        responses: new Map(),
+        yearData: new Map(),
+        loadingYears: new Set()
       };
 
       const els = {
@@ -539,28 +584,80 @@
         const firstOfMonth = new Date(state.viewYear, state.viewMonth, 1);
         const gridStart = addDays(firstOfMonth, -mondayZeroWeekday(firstOfMonth));
         const todayStr = formatDate(new Date());
+        const visibleYears = new Set();
 
         for (let index = 0; index < 42; index += 1) {
           const date = addDays(gridStart, index);
           const dateStr = formatDate(date);
+          visibleYears.add(date.getFullYear());
           const button = document.createElement("button");
           const cached = state.responses.get(dateStr);
+          const knownWorkday = cached?.todayIsWorkday;
 
           button.type = "button";
           button.className = [
             "day",
             date.getMonth() === state.viewMonth ? "" : "outside",
+            knownWorkday === true ? "workday" : "",
+            knownWorkday === false ? "non-workday" : "",
             dateStr === todayStr ? "today" : "",
             dateStr === state.selectedDate ? "selected" : ""
           ].filter(Boolean).join(" ");
           button.dataset.date = dateStr;
           button.innerHTML = `
             <span class="day-number">${date.getDate()}</span>
+            ${knownWorkday === undefined ? "" : `<span class="workday-badge">${knownWorkday ? "工作日" : "休息日"}</span>`}
             <span class="day-date">${dateStr}</span>
             ${cached ? `<span class="status-pill">${cached.shouldRemind ? "需要提醒" : "无需提醒"}</span>` : ""}
           `;
           button.addEventListener("click", () => selectDate(dateStr));
           els.days.append(button);
+        }
+
+        for (const year of visibleYears) {
+          loadYearData(year);
+        }
+      }
+
+      async function loadYearData(year) {
+        if (state.yearData.has(year) || state.loadingYears.has(year)) {
+          return;
+        }
+
+        state.loadingYears.add(year);
+        const url = buildDataUrl(year);
+        log("读取月份工作日数据", { url, year });
+
+        try {
+          const response = await fetch(url, { method: "GET", cache: "no-store" });
+          const text = await response.text();
+          let data;
+
+          try {
+            data = JSON.parse(text);
+          } catch (error) {
+            throw new Error(`响应不是 JSON：${text.slice(0, 200)}`);
+          }
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          state.yearData.set(year, data);
+
+          for (const [date, result] of Object.entries(data.reminders || {})) {
+            state.responses.set(date, {
+              ...result,
+              updatedAt: result.updatedAt || data.updatedAt
+            });
+          }
+
+          renderCalendar();
+          log("月份工作日数据读取成功", { year, count: Object.keys(data.reminders || {}).length });
+        } catch (error) {
+          log("月份工作日数据读取失败", { year, error: error.message });
+        } finally {
+          state.loadingYears.delete(year);
         }
       }
 
@@ -638,6 +735,13 @@
           <p class="banner-title">读取中</p>
           <p class="banner-text">正在读取 ${selected.getFullYear()} 年提醒数据。</p>
         `;
+
+        const cachedResult = state.responses.get(dateStr);
+        if (cachedResult) {
+          renderResult(cachedResult);
+          log("使用已缓存日期结果", { date: dateStr, result: cachedResult });
+          return;
+        }
 
         const url = buildDataUrl(selected.getFullYear());
         log("读取提醒数据", { url, date: dateStr });
