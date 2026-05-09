@@ -104,8 +104,6 @@ bookMeetingRoom/
   .github/
     workflows/
       update-pages-data.yml
-  docs/
-    shortcut.md
   github-pages/
     public/
       index.html
@@ -120,6 +118,7 @@ bookMeetingRoom/
     reminder.test.js
   package.json
   README.md
+  ios上设置快捷指令.md
 ```
 
 ## GitHub Pages 配置
@@ -191,12 +190,12 @@ http://localhost:8787/calendar-test.html
 
 详细设置步骤见：
 
-[docs/shortcut.md](docs/shortcut.md)
+[ios上设置快捷指令.md](ios上设置快捷指令.md)
 
 快捷指令最终只需要读取：
 
 ```text
-https://你的用户名.github.io/book-meeting-room/data/today.json
+https://你的用户名.github.io/bookMeetingRoom/data/today.json
 ```
 
 然后按 `status` 和 `shouldRemind` 开关闹钟。
@@ -206,7 +205,7 @@ https://你的用户名.github.io/book-meeting-room/data/today.json
 部署后访问：
 
 ```text
-https://你的用户名.github.io/book-meeting-room/calendar-test.html
+https://你的用户名.github.io/bookMeetingRoom/calendar-test.html
 ```
 
 该页面读取 `data/reminders-YYYY.json`，用于查看任意日期的预计算结果。
