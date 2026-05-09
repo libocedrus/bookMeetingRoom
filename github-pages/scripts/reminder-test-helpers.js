@@ -20,14 +20,6 @@ export function weekdayMondayZero(dateStr) {
   return day === 0 ? 6 : day - 1;
 }
 
-export function getYear(dateStr) {
-  return Number(dateStr.slice(0, 4));
-}
-
-export function normalizeJiejiariWorkdays(payload) {
-  return new Set(Object.keys(payload ?? {}));
-}
-
 export function calculateReminder(dateStr, workdaySet) {
   const todayIsWorkday = workdaySet.has(dateStr);
 
@@ -76,25 +68,5 @@ export function calculateReminder(dateStr, workdaySet) {
     message: shouldRemind
       ? "预约3个工作日后的会议室"
       : "3个工作日后不是周四，无需提醒"
-  };
-}
-
-export function buildFallbackResult(dateStr, shouldRemind, error) {
-  return {
-    success: false,
-    date: dateStr,
-    todayIsWorkday: null,
-    targetDate: null,
-    targetIsWorkday: null,
-    targetWeekday: null,
-    shouldRemind,
-    isFallback: true,
-    userNotice: shouldRemind
-      ? "会议室提醒判断失败，已默认打开闹钟"
-      : "会议室提醒判断失败，已默认关闭闹钟",
-    message: shouldRemind
-      ? "工作日判断失败，已按不漏提醒策略打开闹钟"
-      : "工作日判断失败，已按不打扰策略关闭闹钟",
-    error: error?.message ?? String(error ?? "Unknown error")
   };
 }

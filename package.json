@@ -5,12 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "dev": "npx wrangler dev",
-    "deploy": "npx wrangler deploy",
-    "local:legacy": "node scripts/local-server.js"
-  },
-  "devDependencies": {
-    "wrangler": "^4.88.0"
+    "generate": "node github-pages/scripts/generate-data.js",
+    "serve": "node scripts/local-server.js"
   },
   "engines": {
     "node": ">=18"

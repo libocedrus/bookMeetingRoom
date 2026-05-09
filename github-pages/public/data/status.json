@@ -1,0 +1,31 @@
+{
+  "status": "ok",
+  "updatedAt": "2026-05-09T15:47:44+08:00",
+  "today": "2026-05-09",
+  "sources": [
+    {
+      "year": 2026,
+      "source": "jiejiariapi",
+      "status": "ok",
+      "attempts": [
+        {
+          "source": "jiejiariapi",
+          "ok": true
+        }
+      ],
+      "staleReason": null
+    },
+    {
+      "year": 2027,
+      "source": "jiejiariapi",
+      "status": "ok",
+      "attempts": [
+        {
+          "source": "jiejiariapi",
+          "ok": true
+        }
+      ],
+      "staleReason": null
+    }
+  ]
+}

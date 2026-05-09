@@ -395,11 +395,11 @@
       <header class="topbar">
         <div>
           <h1>会议室提醒日历测试</h1>
-          <p class="subtitle">点击日期，把它作为接口里的“今天”进行测试。红框表示当前选中的测试日期。</p>
+          <p class="subtitle">点击日期，查看 GitHub Actions 预生成的提醒结果。红框表示当前选中的测试日期。</p>
         </div>
         <div class="endpoint">
-          <label for="endpoint">接口地址</label>
-          <input id="endpoint" type="text" value="/api/meeting-room/should-remind">
+          <label for="endpoint">提醒数据地址</label>
+          <input id="endpoint" type="text" value="/data/reminders-{year}.json">
         </div>
       </header>
 
@@ -432,10 +432,10 @@
 
         <aside class="side">
           <section class="panel result">
-            <h2 class="section-title">接口结果</h2>
+            <h2 class="section-title">提醒结果</h2>
             <div class="result-banner" id="resultBanner">
               <p class="banner-title">请选择一个日期</p>
-              <p class="banner-text">页面会把选中日期作为 date 参数请求接口。</p>
+              <p class="banner-text">页面会读取对应年份的 reminders JSON。</p>
             </div>
             <div class="fields" id="fields"></div>
           </section>
@@ -452,8 +452,7 @@
     </main>
 
     <script>
-      const PRODUCTION_ENDPOINT = "https://book-meeting-room.YOUR_WORKERS_SUBDOMAIN.workers.dev/api/meeting-room/should-remind";
-      const DEFAULT_ENDPOINT = "/api/meeting-room/should-remind";
+      const DEFAULT_DATA_TEMPLATE = "/data/reminders-{year}.json";
       const state = {
         viewYear: new Date().getFullYear(),
         viewMonth: new Date().getMonth(),
@@ -506,19 +505,10 @@
         els.logs.textContent = `[${time}] ${message}${detail}\n\n${els.logs.textContent}`;
       }
 
-      function buildEndpoint(dateStr) {
-        const raw = els.endpoint.value.trim() || DEFAULT_ENDPOINT;
-        const base = location.protocol === "file:" ? PRODUCTION_ENDPOINT : location.href;
+      function buildDataUrl(year) {
+        const raw = (els.endpoint.value.trim() || DEFAULT_DATA_TEMPLATE).replace("{year}", String(year));
+        const base = location.protocol === "file:" ? window.location.href : location.href;
         const url = new URL(raw, base);
-        const pageParams = new URLSearchParams(location.search);
-
-        for (const [key, value] of pageParams.entries()) {
-          if (key.startsWith("eo_") && !url.searchParams.has(key)) {
-            url.searchParams.set(key, value);
-          }
-        }
-
-        url.searchParams.set("date", dateStr);
         return url.toString();
       }
 
@@ -579,13 +569,13 @@
           els.resultBanner.className = "result-banner";
           els.resultBanner.innerHTML = `
             <p class="banner-title">请选择一个日期</p>
-            <p class="banner-text">页面会把选中日期作为 date 参数请求接口。</p>
+            <p class="banner-text">页面会读取对应年份的 reminders JSON。</p>
           `;
           els.fields.innerHTML = "";
           return;
         }
 
-        const bannerClass = data.success
+        const bannerClass = data.status === "ok" || data.status === "partial_source_fallback"
           ? data.shouldRemind ? "ok" : ""
           : "warn";
         els.resultBanner.className = `result-banner ${bannerClass}`;
@@ -596,14 +586,15 @@
 
         const rows = [
           ["测试日期", data.date],
-          ["查询成功", stringifyValue(data.success)],
+          ["状态", stringifyValue(data.status)],
           ["今天是工作日", stringifyValue(data.todayIsWorkday)],
           ["目标日期", stringifyValue(data.targetDate)],
           ["目标日是工作日", stringifyValue(data.targetIsWorkday)],
-          ["目标日星期", weekdayText(data.targetWeekday)],
+          ["目标日星期", stringifyValue(data.targetWeekdayName)],
           ["是否提醒", stringifyValue(data.shouldRemind)],
-          ["是否兜底", stringifyValue(data.isFallback)],
-          ["用户提示", stringifyValue(data.userNotice)],
+          ["动作策略", stringifyValue(data.actionPolicy)],
+          ["更新时间", stringifyValue(data.updatedAt)],
+          ["提示", stringifyValue(data.message)],
           ["错误", stringifyValue(data.error)]
         ];
 
@@ -613,14 +604,6 @@
             <div class="value">${escapeHtml(value)}</div>
           </div>
         `).join("");
-      }
-
-      function weekdayText(value) {
-        if (value === null || value === undefined) {
-          return "-";
-        }
-
-        return ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][value] || String(value);
       }
 
       function stringifyValue(value) {
@@ -652,16 +635,16 @@
         renderCalendar();
         els.resultBanner.className = "result-banner";
         els.resultBanner.innerHTML = `
-          <p class="banner-title">请求中</p>
-          <p class="banner-text">正在用 ${dateStr} 测试接口。</p>
+          <p class="banner-title">读取中</p>
+          <p class="banner-text">正在读取 ${selected.getFullYear()} 年提醒数据。</p>
         `;
 
-        const url = buildEndpoint(dateStr);
-        log("发送请求", { url, date: dateStr });
+        const url = buildDataUrl(selected.getFullYear());
+        log("读取提醒数据", { url, date: dateStr });
 
         try {
           const startedAt = performance.now();
-          const response = await fetch(url, { method: "GET" });
+          const response = await fetch(url, { method: "GET", cache: "no-store" });
           const elapsedMs = Math.round(performance.now() - startedAt);
           const text = await response.text();
           let data;
@@ -676,21 +659,29 @@
             throw new Error(`HTTP ${response.status}`);
           }
 
-          state.responses.set(dateStr, data);
+          const result = data.reminders?.[dateStr] || {
+            status: "not_found",
+            date: dateStr,
+            shouldRemind: false,
+            actionPolicy: "close_alarm",
+            message: "未找到该日期的提醒数据"
+          };
+          result.updatedAt = result.updatedAt || data.updatedAt;
+          state.responses.set(dateStr, result);
           renderCalendar();
-          renderResult(data);
-          log("收到响应", { status: response.status, elapsedMs, data });
+          renderResult(result);
+          log("读取成功", { status: response.status, elapsedMs, result });
         } catch (error) {
           const data = {
-            success: false,
+            status: "read_failed",
             date: dateStr,
             shouldRemind: null,
-            isFallback: false,
-            message: "测试页面请求失败",
+            actionPolicy: "manual_check",
+            message: "测试页面读取失败",
             error: error.message
           };
           renderResult(data);
-          log("请求失败", { date: dateStr, error: error.message });
+          log("读取失败", { date: dateStr, error: error.message });
         }
       }
 
@@ -704,7 +695,7 @@
       fillSelects();
       renderCalendar();
       renderResult(null);
-      log("测试页面已加载", { defaultEndpoint: DEFAULT_ENDPOINT });
+      log("测试页面已加载", { defaultDataTemplate: DEFAULT_DATA_TEMPLATE });
 
       els.prevMonth.addEventListener("click", () => moveMonth(-1));
       els.nextMonth.addEventListener("click", () => moveMonth(1));

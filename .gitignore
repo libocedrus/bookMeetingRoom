@@ -3,7 +3,5 @@
 .dev.vars
 .dev.vars.*
 node_modules/
-.edgeone/
-.wrangler/
 dist/
 coverage/
