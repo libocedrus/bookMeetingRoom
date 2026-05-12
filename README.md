@@ -29,6 +29,16 @@ iPhone 快捷指令
 3. 第 3 个工作日是周四：提醒。
 4. 提醒文案为：`预约3个工作日后的会议室`。
 
+## 在线测试
+
+部署后可通过日历测试页检查每日预计算结果：
+
+```text
+https://libocedrus.github.io/bookMeetingRoom/calendar-test.html
+```
+
+该页面会读取 GitHub Actions 生成的 `data/reminders-YYYY.json`，用于查看任意日期的提醒结果。
+
 ## 数据源
 
 生成脚本会按顺序尝试以下来源：
@@ -256,6 +266,7 @@ https://你的用户名.github.io/bookMeetingRoom/data/daily/YYYY-MM-DD.json
 
 ```text
 https://你的用户名.github.io/bookMeetingRoom/calendar-test.html
+https://libocedrus.github.io/bookMeetingRoom/calendar-test.html
 ```
 
 该页面读取 `data/reminders-YYYY.json`，用于查看任意日期的预计算结果。
