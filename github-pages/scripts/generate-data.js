@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const OUTPUT_DIR = new URL("../public/data/", import.meta.url);
 const TZ = "Asia/Shanghai";
@@ -296,7 +296,28 @@ function calculateReminder(dateStr, allWorkdays, status = "ok") {
 }
 
 async function writeJson(fileName, data) {
-  await writeFile(join(OUTPUT_DIR.pathname, fileName), `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  const path = join(OUTPUT_DIR.pathname, fileName);
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+}
+
+function withGeneratedMeta(result, updatedAt, aggregateStatus) {
+  const output = {
+    ...result,
+    updatedAt
+  };
+
+  if (aggregateStatus === "partial_source_fallback") {
+    output.message = `${output.message}；工作日数据使用备用来源更新`;
+  }
+
+  if (aggregateStatus === "stale_data") {
+    output.shouldRemind = FALLBACK_SHOULD_REMIND;
+    output.actionPolicy = FALLBACK_SHOULD_REMIND ? "open_alarm" : "close_alarm";
+    output.message = "工作日数据更新失败，已使用旧数据，请手动确认";
+  }
+
+  return output;
 }
 
 async function main() {
@@ -344,7 +365,13 @@ async function main() {
     const last = `${year}-12-31`;
 
     while (cursor <= last) {
-      reminders[cursor] = calculateReminder(cursor, allWorkdays, aggregateStatus);
+      const dailyResult = withGeneratedMeta(
+        calculateReminder(cursor, allWorkdays, aggregateStatus),
+        updatedAt,
+        aggregateStatus
+      );
+      reminders[cursor] = dailyResult;
+      await writeJson(`daily/${cursor}.json`, dailyResult);
       cursor = addDays(cursor, 1);
     }
 
@@ -357,20 +384,9 @@ async function main() {
   }
 
   const todayResult = {
-    ...calculateReminder(today, allWorkdays, aggregateStatus),
-    updatedAt,
+    ...withGeneratedMeta(calculateReminder(today, allWorkdays, aggregateStatus), updatedAt, aggregateStatus),
     sources: sourceReports
   };
-
-  if (aggregateStatus === "partial_source_fallback") {
-    todayResult.message = `${todayResult.message}；工作日数据使用备用来源更新`;
-  }
-
-  if (aggregateStatus === "stale_data") {
-    todayResult.shouldRemind = FALLBACK_SHOULD_REMIND;
-    todayResult.actionPolicy = FALLBACK_SHOULD_REMIND ? "open_alarm" : "close_alarm";
-    todayResult.message = "工作日数据更新失败，已使用旧数据，请手动确认";
-  }
 
   await writeJson("today.json", todayResult);
   await writeJson("status.json", {
@@ -404,6 +420,7 @@ main().catch(async (error) => {
     error: error.message
   };
   await writeJson("today.json", fallback);
+  await writeJson(`daily/${today}.json`, fallback);
   await writeJson("status.json", fallback);
   console.error(error);
 });

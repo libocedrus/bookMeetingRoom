@@ -1,19 +1,25 @@
 # 会议室预定提醒
 
-这是一个基于 GitHub Actions 和 GitHub Pages 的会议室预定提醒方案。GitHub Actions 每天定时调用多个工作日 API，生成静态 JSON；iPhone 快捷指令只读取 `today.json`，根据 `shouldRemind` 打开或关闭名为 `预定会议室` 的闹钟。
+这是一个基于 GitHub Actions 和 GitHub Pages 的会议室预定提醒方案。GitHub Actions 每天定时调用多个工作日 API，预生成当前年和下一年每天的静态 JSON；iPhone 快捷指令按当天日期读取 `/data/daily/YYYY-MM-DD.json`，先检查 `date` 和 `status`，再根据 `actionPolicy` 开关会议室预定闹钟。
 
 ## 架构
 
 ```text
 GitHub Actions 定时运行
   -> 依次调用多个工作日 API
-  -> 生成静态 JSON 数据
+  -> 生成当前年和下一年的工作日数据
+  -> 预计算当前年和下一年每天的提醒结果
   -> 发布到 GitHub Pages
 
 iPhone 快捷指令
-  -> 获取 /data/today.json
-  -> 读取 status 和 shouldRemind
+  -> 先打开“【运行失败】请自查预定会议室”兜底闹钟
+  -> 用今天日期拼出 /data/daily/YYYY-MM-DD.json
+  -> 获取当天 JSON
+  -> 先检查 date 是否等于今天
+  -> 先读取 status
+  -> date = 今天且 status = ok 时读取 actionPolicy
   -> 打开或关闭“预定会议室”闹钟
+  -> 完整执行成功后关闭兜底闹钟
 ```
 
 ## 提醒规则
@@ -37,6 +43,28 @@ iPhone 快捷指令
 
 GitHub Actions 会缓存上一轮生成的 `data/` 目录。若当天所有数据源都失败，脚本会优先使用上一轮可用数据，并将状态标记为 `stale_data`。
 
+## 计算范围
+
+每次运行 GitHub Actions 时，都会计算：
+
+```text
+当前年
+下一年
+```
+
+例如当前日期是 2026 年，则生成：
+
+```text
+workdays-2026.json
+workdays-2027.json
+reminders-2026.json
+reminders-2027.json
+daily/2026-01-01.json ... daily/2026-12-31.json
+daily/2027-01-01.json ... daily/2027-12-31.json
+```
+
+这个范围可以覆盖年底跨年的第 3 个工作日判断。历史年份不再主动计算；如果缓存中仍有历史 daily 文件，快捷指令也不会读取。
+
 ## 输出文件
 
 GitHub Pages 发布后会包含：
@@ -47,15 +75,18 @@ GitHub Pages 发布后会包含：
 /data/sources.json
 /data/workdays-YYYY.json
 /data/reminders-YYYY.json
+/data/daily/YYYY-MM-DD.json
 /calendar-test.html
 /index.html
 ```
 
-快捷指令只需要读取：
+快捷指令正式读取：
 
 ```text
-/data/today.json
+/data/daily/YYYY-MM-DD.json
 ```
+
+`today.json` 会继续保留，用于调试和兼容。
 
 示例：
 
@@ -76,7 +107,7 @@ GitHub Pages 发布后会包含：
 
 ## 状态说明
 
-`today.json` 中的 `status` 用于告诉快捷指令是否可以信任 `shouldRemind`：
+每日 JSON 中的 `status` 用于告诉快捷指令是否可以信任提醒判断结果：
 
 ```text
 ok：数据更新正常
@@ -89,12 +120,23 @@ all_sources_failed：所有数据源失败且没有旧数据
 推荐快捷指令处理策略：
 
 ```text
-status = ok
-  -> 按 shouldRemind 开关闹钟
+date = 今天 且 status = ok
+  -> 按 actionPolicy 开关闹钟
 
-status != ok
-  -> 显示 message
-  -> 默认打开闹钟，避免漏提醒
+date != 今天
+  -> 停止快捷指令
+  -> 保持“【运行失败】请自查预定会议室”兜底闹钟打开
+
+date = 今天 但 status != ok
+  -> 停止快捷指令
+  -> 保持“【运行失败】请自查预定会议室”兜底闹钟打开
+```
+
+iOS 快捷指令会把布尔值 `shouldRemind` 本地化为 `是` 或 `否`，因此快捷指令中使用字符串字段 `actionPolicy` 判断：
+
+```text
+open_alarm：打开“预定会议室”
+close_alarm：关闭“预定会议室”
 ```
 
 ## 项目结构
@@ -109,6 +151,7 @@ bookMeetingRoom/
       index.html
       calendar-test.html
       data/
+        daily/
     scripts/
       generate-data.js
       reminder-test-helpers.js
@@ -145,19 +188,25 @@ Actions -> Update Pages Data
 
 6. 手动运行一次 workflow，或等待定时运行。
 
-workflow 每天运行两次：
+workflow 每天运行多次：
 
 ```text
-北京时间 08:10
-北京时间 08:40
+北京时间 00:01
+北京时间 00:11
+北京时间 00:31
+北京时间 01:01
 ```
 
 对应 UTC cron：
 
 ```text
-10 0 * * *
-40 0 * * *
+1 16 * * *
+11 16 * * *
+31 16 * * *
+1 17 * * *
 ```
+
+GitHub Actions 的定时任务不是强实时任务，可能延迟或偶发丢跑。这里以北京时间 00:01 作为当天首次更新，并在 00:11、00:31、01:01 安排重试。由于每天会预生成当前年和下一年的每日结果，即使当天凌晨 workflow 延迟，快捷指令通常也能读取已经存在的当天文件。
 
 ## 本地验证
 
@@ -183,6 +232,7 @@ npm run serve
 
 ```text
 http://localhost:8787/data/today.json
+http://localhost:8787/data/daily/2026-05-12.json
 http://localhost:8787/calendar-test.html
 ```
 
@@ -192,13 +242,13 @@ http://localhost:8787/calendar-test.html
 
 [ios上设置快捷指令.md](ios上设置快捷指令.md)
 
-快捷指令最终只需要读取：
+快捷指令最终按当天日期拼接并读取：
 
 ```text
-https://你的用户名.github.io/bookMeetingRoom/data/today.json
+https://你的用户名.github.io/bookMeetingRoom/data/daily/YYYY-MM-DD.json
 ```
 
-然后按 `status` 和 `shouldRemind` 开关闹钟。
+快捷指令需要先打开失败兜底闹钟，再读取 `date` 和 `status`；只有 `date` 等于今天且 `status = ok` 时才读取 `actionPolicy` 并开关正常提醒闹钟。
 
 ## 日历测试页
 
@@ -222,4 +272,4 @@ GitHub Actions 定时任务可能延迟
 免费 API 可能不可用或数据结构变化
 ```
 
-为降低风险，脚本会依次尝试多个数据源，并在失败时输出状态，让 iPhone 快捷指令给出反馈。
+为降低风险，脚本会依次尝试多个数据源，并预生成当前年和下一年的每日结果。快捷指令读取当天文件并检查 `date` 和 `status`，异常时保留失败兜底闹钟。
